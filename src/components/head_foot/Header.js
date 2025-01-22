@@ -34,6 +34,14 @@ const Header = () => {
         {token ? (
           <>
             <Button
+              onClick={() => navigate("/transaction")}
+              color="light"
+              className="text-xs"
+              size="xs"
+            >
+              Transaction
+            </Button>
+            <Button
               onClick={() => navigate("/deposit")}
               color="light"
               className="text-xs"
