@@ -1,23 +1,57 @@
 import React, { useState, useContext } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../AuthContext";
-import { Button, Label, TextInput, Card } from "flowbite-react";
+import {
+  Button,
+  Label,
+  TextInput,
+  Card,
+  Progress,
+  Modal,
+} from "flowbite-react";
 import Header from "../head_foot/Header";
 import Footer from "../head_foot/Footer";
 
 const Profile = () => {
-  const { token } = useContext(AuthContext);
+  const { token, setToken } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [currentEmail, setCurrentEmail] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [emailPassword, setEmailPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
+  const validatePassword = (password) => {
+    const passwordRegex =
+      /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*()_+}{":;'?/>.<,])(?=.*[A-Z])(?=.*[a-z]).{8,}$/;
+    return passwordRegex.test(password);
+  };
+
+  const calculatePasswordStrength = (password) => {
+    let strength = 0;
+    if (password.length >= 8) strength += 20;
+    if (/[A-Z]/.test(password)) strength += 20;
+    if (/[a-z]/.test(password)) strength += 20;
+    if (/\d/.test(password)) strength += 20;
+    if (/[!@#$%^&*()_+}{":;'?/>.<,]/.test(password)) strength += 20;
+    return strength;
+  };
+
+  const handlePasswordChange = async () => {
+    if (!validatePassword(newPassword)) {
+      setPasswordError(
+        "Le mot de passe doit contenir au moins 8 caractères, dont une lettre majuscule, une lettre minuscule, un chiffre et un caractère spécial."
+      );
+      return;
+    }
     if (newPassword !== confirmNewPassword) {
       setPasswordError("Les nouveaux mots de passe ne correspondent pas.");
       return;
@@ -25,7 +59,7 @@ const Profile = () => {
     try {
       await axios.post(
         "http://127.0.0.1:8000/auth/change-password",
-        { currentPassword, newPassword },
+        { current_password: currentPassword, new_password: newPassword },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -34,6 +68,8 @@ const Profile = () => {
       );
       setSuccessMessage("Mot de passe modifié avec succès.");
       setPasswordError("");
+      setToken(null); // Déconnexion
+      navigate("/login"); // Redirection vers la page de connexion
     } catch (error) {
       console.error("Erreur lors du changement de mot de passe", error);
       setPasswordError(
@@ -42,12 +78,15 @@ const Profile = () => {
     }
   };
 
-  const handleEmailChange = async (e) => {
-    e.preventDefault();
+  const handleEmailChange = async () => {
     try {
       await axios.post(
         "http://127.0.0.1:8000/auth/change-email",
-        { currentEmail, newEmail },
+        {
+          current_email: currentEmail,
+          new_email: newEmail,
+          password: emailPassword,
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -56,10 +95,26 @@ const Profile = () => {
       );
       setSuccessMessage("Email modifié avec succès.");
       setEmailError("");
+      setToken(null); // Déconnexion
+      navigate("/login"); // Redirection vers la page de connexion
     } catch (error) {
       console.error("Erreur lors du changement d'email", error);
       setEmailError("Erreur lors du changement d'email. Veuillez réessayer.");
     }
+  };
+
+  const handleNewPasswordChange = (e) => {
+    const newPassword = e.target.value;
+    setNewPassword(newPassword);
+    setPasswordStrength(calculatePasswordStrength(newPassword));
+  };
+
+  const getPasswordStrengthColor = () => {
+    if (passwordStrength < 41) return "red"; // Red
+    if (passwordStrength === 40) return "orange"; // Orange
+    if (passwordStrength === 60) return "yellow"; // Yellow
+    if (passwordStrength === 80) return "yellow"; // Yellow
+    if (passwordStrength === 100) return "green"; // Green
   };
 
   return (
@@ -78,7 +133,12 @@ const Profile = () => {
               {successMessage && (
                 <p className="text-green-500 mb-4">{successMessage}</p>
               )}
-              <form onSubmit={handlePasswordChange}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setShowPasswordModal(true);
+                }}
+              >
                 <div className="mb-4">
                   <Label
                     htmlFor="currentPassword"
@@ -106,9 +166,14 @@ const Profile = () => {
                     id="newPassword"
                     type="password"
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
+                    onChange={handleNewPasswordChange}
                     className="w-full"
                     required
+                  />
+                  <Progress
+                    progress={passwordStrength}
+                    color={getPasswordStrengthColor()}
+                    className="mt-2"
                   />
                 </div>
                 <div className="mb-4">
@@ -144,7 +209,12 @@ const Profile = () => {
               {successMessage && (
                 <p className="text-green-500 mb-4">{successMessage}</p>
               )}
-              <form onSubmit={handleEmailChange}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setShowEmailModal(true);
+                }}
+              >
                 <div className="mb-4">
                   <Label
                     htmlFor="currentEmail"
@@ -154,7 +224,7 @@ const Profile = () => {
                   </Label>
                   <TextInput
                     id="currentEmail"
-                    type="text"
+                    type="email"
                     value={currentEmail}
                     onChange={(e) => setCurrentEmail(e.target.value)}
                     className="w-full"
@@ -170,9 +240,25 @@ const Profile = () => {
                   </Label>
                   <TextInput
                     id="newEmail"
-                    type="text"
+                    type="email"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
+                    className="w-full"
+                    required
+                  />
+                </div>
+                <div className="mb-4">
+                  <Label
+                    htmlFor="emailPassword"
+                    className="block text-gray-700 mb-2"
+                  >
+                    Mot de passe :
+                  </Label>
+                  <TextInput
+                    id="emailPassword"
+                    type="password"
+                    value={emailPassword}
+                    onChange={(e) => setEmailPassword(e.target.value)}
                     className="w-full"
                     required
                   />
@@ -190,6 +276,53 @@ const Profile = () => {
         </div>
       </div>
       <Footer />
+
+      {/* Modal de confirmation pour le changement de mot de passe */}
+      <Modal
+        show={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+      >
+        <Modal.Header>Confirmer la modification du mot de passe</Modal.Header>
+        <Modal.Body>
+          <p>Êtes-vous sûr de vouloir modifier votre mot de passe ?</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button color="failure" onClick={() => setShowPasswordModal(false)}>
+            Annuler
+          </Button>
+          <Button
+            color="success"
+            onClick={() => {
+              setShowPasswordModal(false);
+              handlePasswordChange();
+            }}
+          >
+            Confirmer
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal de confirmation pour le changement d'email */}
+      <Modal show={showEmailModal} onClose={() => setShowEmailModal(false)}>
+        <Modal.Header>Confirmer la modification de l'email</Modal.Header>
+        <Modal.Body>
+          <p>Êtes-vous sûr de vouloir modifier votre email ?</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button color="failure" onClick={() => setShowEmailModal(false)}>
+            Annuler
+          </Button>
+          <Button
+            color="success"
+            onClick={() => {
+              setShowEmailModal(false);
+              handleEmailChange();
+            }}
+          >
+            Confirmer
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };
