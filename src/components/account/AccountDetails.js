@@ -50,20 +50,26 @@ const AccountDetails = () => {
     }
   }, [token, accountNumber]);
 
-  const handleDeactivateAccount = async () => {
-    try {
-      await axios.post(
-        `http://127.0.0.1:8000/accounts/${accountNumber}/deactivate`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      console.log("Compte désactivé avec succès");
-      navigate("/");
-    } catch (error) {
-      console.error("Erreur lors de la désactivation du compte :", error);
-    }
+  const handleDeactivateAccount = async (password) => {
+    return new Promise((resolve, reject) => {
+      axios
+        .post(
+          `http://127.0.0.1:8000/accounts/${accountNumber}/deactivate`,
+          { password: password },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        )
+        .then(() => {
+          console.log("Compte désactivé avec succès");
+          navigate("/");
+          resolve();
+        })
+        .catch((error) => {
+          console.error("Erreur lors de la désactivation du compte :", error);
+          reject(new Error("Mot de passe incorrect"));
+        });
+    });
   };
 
   const openModal = () => {
@@ -267,10 +273,7 @@ const AccountDetails = () => {
       <ConfirmDeactivateModal
         isOpen={modalIsOpen}
         onRequestClose={closeModal}
-        onConfirm={() => {
-          handleDeactivateAccount();
-          closeModal();
-        }}
+        onConfirm={(password) => handleDeactivateAccount(password)}
         accountNumber={account?.account_number}
       />
     </div>
