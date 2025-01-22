@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useContext } from "react";
-import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../AuthContext";
 import Header from "../head_foot/Header";
 import Footer from "../head_foot/Footer";
 import ConfirmDeactivateModal from "./conFirmeDeactivateModal";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
+import generatePDF from "../divers/generatePDF";
+import {
+  fetchAccountDetails,
+  fetchTransactions,
+  deactivateAccount,
+} from "../divers/accountAPI";
+import Graph from "../divers/Graph"; // Import the Graph component
 
 const AccountDetails = () => {
   const { token } = useContext(AuthContext);
@@ -19,34 +23,13 @@ const AccountDetails = () => {
 
   useEffect(() => {
     if (token) {
-      axios
-        .get(`http://127.0.0.1:8000/accounts/${accountNumber}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        .then((res) => {
-          setAccount(res.data);
-        })
-        .catch((error) => {
-          console.error("Error fetching account details:", error);
-        });
+      fetchAccountDetails(accountNumber, token)
+        .then((data) => setAccount(data))
+        .catch((error) => console.error(error));
 
-      axios
-        .get(
-          `http://127.0.0.1:8000/accounts/${accountNumber}/all_transactions`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        )
-        .then((res) => {
-          setTransactions(res.data);
-        })
-        .catch((error) => {
-          console.error("Error fetching transactions:", error);
-        });
+      fetchTransactions(accountNumber, token)
+        .then((data) => setTransactions(data))
+        .catch((error) => console.error(error));
     }
   }, [token, accountNumber]);
 
@@ -127,56 +110,13 @@ const AccountDetails = () => {
     }
   };
 
-  const generatePDF = () => {
-    const doc = new jsPDF();
-    doc.text("Relevé de compte", 14, 16);
-
-    // Utilisation de splitTextToSize pour gérer les retours à la ligne
-    const accountNameText = doc.splitTextToSize(
-      `Nom du compte : ${account.name}`,
-      180
-    );
-    const accountNumberText = doc.splitTextToSize(
-      `Numéro: ${account.account_number}`,
-      180
-    );
-    const accountBalanceText = doc.splitTextToSize(
-      `Solde: ${account.balance} €`,
-      180
-    );
-
-    doc.text(accountNameText, 14, 22);
-    doc.text(accountNumberText, 14, 28);
-    doc.text(accountBalanceText, 14, 34);
-
-    const tableColumn = ["Date", "Type", "Montant", "Description"];
-    const tableRows = [];
-
-    filteredTransactions.forEach((transaction) => {
-      const transactionData = [
-        formatDate(transaction.date),
-        translateType(transaction.type),
-        `${transaction.amount} €`,
-        transaction.description || "",
-      ];
-      tableRows.push(transactionData);
-    });
-
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-      startY: 40,
-    });
-    doc.save(`releve_compte_${account.account_number}.pdf`);
-  };
-
   if (!token) return <p>Vous devez être connecté pour voir cette page</p>;
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <Header />
       <main className="flex-grow flex flex-col items-center pt-2">
-        <div className="bg-white p-4 rounded-lg shadow-md text-center w-full max-w-4xl">
+        <div className="bg-white p-4 rounded-lg shadow-md text-center w-full max-w-4xl ">
           {account ? (
             <div className="mb-4 pb-2 rounded-lg shadow-md bg-gray-50">
               <p className="text-md font-semibold">{account.name}</p>
@@ -225,7 +165,7 @@ const AccountDetails = () => {
               Dépenses
             </button>
           </div>
-          <div className="mb-4 overflow-x-auto">
+          <div className="mb-4 overflow-x-auto max-h-[40vh] overflow-auto">
             {Object.keys(groupedTransactions).length > 0 ? (
               <table className="min-w-full bg-white">
                 <thead>
@@ -262,11 +202,21 @@ const AccountDetails = () => {
             )}
           </div>
           <button
-            onClick={generatePDF}
+            onClick={() =>
+              generatePDF(
+                account,
+                filteredTransactions,
+                formatDate,
+                translateType
+              )
+            }
             className="mt-2 px-2 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-300 text-sm"
           >
             Générer PDF
           </button>
+        </div>
+        <div className="w-full max-w-4xl mt-4">
+          <Graph transactions={transactions} />
         </div>
       </main>
       <Footer />

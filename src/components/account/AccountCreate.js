@@ -19,9 +19,7 @@ const AccountCreate = () => {
     try {
       const response = await axios.post(
         "http://127.0.0.1:8000/accounts/",
-        { name: accountName,
-          type: accountType
-         },
+        { name: accountName, type: accountType },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -65,6 +63,9 @@ const AccountCreate = () => {
                 onChange={(e) => setAccountType(e.target.value)}
                 className="w-full"
               >
+                <option value="" selected disabled hidden>
+                  Choisissez un type de compte
+                </option>
                 <option value="livret-a">Livret A</option>
                 <option value="pel">Plan d'Epargne Logement</option>
                 <option value="pea">Plan d'Epargne en Actions</option>
