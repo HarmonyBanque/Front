@@ -11,11 +11,11 @@ import Home from "./components/HomeC";
 import Register from "./components/auth/Register";
 import AccountDetails from "./components/account/AccountDetails";
 import HomeNC from "./components/HomeNC";
-import Exercice from "./components/exo/exercice";
 import NotFound from "./components/head_foot/notFound";
 import AccountCreate from "./components/account/AccountCreate";
 import Deposit from "./components/account/Deposit";
 import Profile from "./components/auth/Profil";
+import Transaction from "./components/account/Transaction";
 
 const PrivateRoute = ({ element: Component, ...rest }) => {
   const { token } = useContext(AuthContext);
@@ -36,7 +36,6 @@ const App = () => {
           path="/account/:accountNumber"
           element={<PrivateRoute element={AccountDetails} />}
         />
-        <Route path="/exercice" element={<PrivateRoute element={Exercice} />} />
         <Route
           path="/account/create"
           element={<PrivateRoute element={AccountCreate} />}
@@ -44,6 +43,7 @@ const App = () => {
         <Route path="/profil" element={<PrivateRoute element={Profile} />} />
 
         <Route path="/deposit" element={<PrivateRoute element={Deposit} />} />
+        <Route path="/transaction" element={<PrivateRoute element={Transaction} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
