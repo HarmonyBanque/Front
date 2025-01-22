@@ -120,9 +120,9 @@ const Profile = () => {
   return (
     <div>
       <Header />
-      <div className="p-6 flex flex-col items-center justify-center bg-gray-100">
-        <div className="flex flex-wrap justify-center gap-6">
-          <div className="w-full max-w-md">
+      <div className="p-6 flex items-center justify-center bg-gray-100">
+        <div className="flex  justify-center gap-6 w-full max-w-4xl">
+          <div className="w-full md:w-1/2">
             <Card>
               <h2 className="text-xl font-bold mb-4">
                 Modifier le mot de passe
@@ -202,7 +202,7 @@ const Profile = () => {
               </form>
             </Card>
           </div>
-          <div className="w-full max-w-md">
+          <div className="w-full md:w-1/2">
             <Card>
               <h2 className="text-xl font-bold mb-4">Modifier l'email</h2>
               {emailError && <p className="text-red-500 mb-4">{emailError}</p>}
