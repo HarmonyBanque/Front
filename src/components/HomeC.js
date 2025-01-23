@@ -5,8 +5,8 @@ import { AuthContext } from "../AuthContext";
 import Header from "./head_foot/Header";
 import Footer from "./head_foot/Footer";
 import AccountCard from "./account/AccountCard"; // Importer le composant AccountCard
-import { Button } from "flowbite-react";
 import { Toaster } from "react-hot-toast";
+import { Button, Spinner } from "flowbite-react";
 
 const Home = () => {
   const { token } = useContext(AuthContext);
@@ -88,7 +88,15 @@ const Home = () => {
               </div>
             </div>
           ) : (
-            <p>Loading...</p>
+            <div className="flex items-center justify-center">
+              <Button color="gray" className=" items-center justify-center">
+                <Spinner
+                  aria-label="Alternate spinner button example"
+                  size="sm"
+                />
+                <span className="pl-3">Loading...</span>
+              </Button>
+            </div>
           )}
         </div>
       </main>

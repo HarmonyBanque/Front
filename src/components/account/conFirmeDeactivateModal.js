@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Modal from "react-modal";
 
 const ConfirmDeactivateModal = ({
@@ -7,6 +7,22 @@ const ConfirmDeactivateModal = ({
   onConfirm,
   accountNumber,
 }) => {
+    const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleConfirm = async () => {
+    if (!password) {
+      setError("Le mot de passe est requis");
+      return;
+    }
+    try {
+      await onConfirm(password);
+      setPassword(""); 
+      setError(""); 
+    } catch (err) {
+      setError("Mot de passe incorrect");
+    }
+  };
   return (
     <Modal
       isOpen={isOpen}
@@ -21,6 +37,14 @@ const ConfirmDeactivateModal = ({
           Êtes-vous sûr de vouloir désactiver le compte{" "}
           <strong>{accountNumber}</strong> ?
         </p>
+        <input
+          type="password"
+          placeholder="Entrez votre mot de passe"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="mb-4 p-2 border border-gray-300 rounded-lg w-full"
+        />
+        {error && <p className="text-red-600 mb-4">{error}</p>}
         <div className="flex justify-end space-x-4">
           <button
             onClick={onRequestClose}
@@ -29,7 +53,7 @@ const ConfirmDeactivateModal = ({
             Annuler
           </button>
           <button
-            onClick={onConfirm}
+            onClick={handleConfirm}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-300"
           >
             Désactiver
