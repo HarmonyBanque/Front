@@ -1,7 +1,7 @@
 import Header from "../head_foot/Header";
 import Footer from "../head_foot/Footer";
-import { Button, Label, TextInput } from "flowbite-react";
-import { useState, useContext, useEffect, use } from "react";
+import { Button, Label, TextInput, Checkbox } from "flowbite-react"; // Import Checkbox
+import { useState, useContext, useEffect } from "react";
 import { AuthContext } from "../../AuthContext";
 import { useNavigate } from "react-router-dom";
 import AddBeneficiaryModal from "./AddBeneficiaryModal";
@@ -24,6 +24,8 @@ const Transaction = () => {
   const [description, setDescription] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState("");
+  const [isAutomatique, setIsAutomatique] = useState(false); // State for automatic transaction
+  const [occurence, setOccurence] = useState(0); // State for occurence
 
   useEffect(() => {
     if (token) {
@@ -56,7 +58,13 @@ const Transaction = () => {
         )
         .then((res) => {
           setBeneficiaries(res.data);
-          setFilteredBeneficiary(res.data);
+          setFilteredBeneficiary(
+            res.data.filter(
+              (beneficiary) =>
+                beneficiary.beneficiary_account_number !==
+                selectedAccount.account_number
+            )
+          );
         })
         .catch((error) => {
           console.error("Error fetching beneficiaries:", error);
@@ -84,13 +92,29 @@ const Transaction = () => {
     e.preventDefault();
     if (token && selectedAccount && selectedBeneficiary) {
       try {
-        await axios
-          .post(
-            "http://127.0.0.1:8000/transactions",
+        const transactionResponse = await axios.post(
+          "http://127.0.0.1:8000/transactions",
+          {
+            amount: amount,
+            sender_id: selectedAccount.account_number,
+            receiver_id: selectedBeneficiary.beneficiary_account_number,
+            description: description,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (isAutomatique) {
+          await axios.post(
+            "http://127.0.0.1:8000/transactions/automatique",
             {
+              sender_account: selectedAccount.account_number,
+              receiver_account: selectedBeneficiary.beneficiary_account_number,
               amount: amount,
-              sender_id: selectedAccount.account_number,
-              receiver_id: selectedBeneficiary.beneficiary_account_number,
+              occurence: occurence,
               description: description,
             },
             {
@@ -98,13 +122,14 @@ const Transaction = () => {
                 Authorization: `Bearer ${token}`,
               },
             }
-          )
-          .then((res) => {
-            navigate("/");
-            cancelToast({ transactionId: res.data.id, handleCancel });
-          });
+          );
+        }
 
-        console.log("Troased");
+        navigate("/");
+        cancelToast({
+          transactionId: transactionResponse.data.id,
+          handleCancel,
+        });
       } catch (error) {
         if (error.response) {
           setError(error.response.data.detail);
@@ -142,6 +167,9 @@ const Transaction = () => {
 
   const handleAccountClick = (account) => {
     setSelectedAccount(account);
+    setFilteredBeneficiary(
+      accounts.filter((acc) => acc.account_number !== account.account_number)
+    );
   };
 
   const handleBeneficiaryClick = (beneficiary) => {
@@ -173,7 +201,7 @@ const Transaction = () => {
                 placeholder="Chercher un compte"
               />
             </div>
-            <div className="mb-4 overflow-x-auto">
+            <div className="mb-4 overflow-y-auto max-h-40">
               {filteredAccounts.length > 0 ? (
                 <table className="min-w-full bg-white">
                   <thead>
@@ -240,7 +268,7 @@ const Transaction = () => {
                     />
                   </div>
                 </div>
-                <div className="mb-4 overflow-x-auto">
+                <div className="mb-4 overflow-y-auto max-h-40">
                   {filteredBeneficiary.length > 0 ? (
                     <table className="min-w-full bg-white">
                       <thead>
@@ -299,7 +327,7 @@ const Transaction = () => {
                         required
                       />
                       <Label
-                        htmlFor="amount"
+                        htmlFor="description"
                         className="block text-gray-700 mb-2"
                       >
                         Description :
@@ -312,6 +340,34 @@ const Transaction = () => {
                         className="w-full"
                         required
                       />
+                      <div className="flex items-center mt-4">
+                        <Checkbox
+                          id="isAutomatique"
+                          checked={isAutomatique}
+                          onChange={(e) => setIsAutomatique(e.target.checked)}
+                        />
+                        <Label htmlFor="isAutomatique" className="ml-2">
+                          Prélèvement automatique
+                        </Label>
+                      </div>
+                      {isAutomatique && (
+                        <div className="mt-4">
+                          <Label
+                            htmlFor="occurence"
+                            className="block text-gray-700 mb-2"
+                          >
+                            Occurence (en secondes) :
+                          </Label>
+                          <TextInput
+                            id="occurence"
+                            type="number"
+                            value={occurence}
+                            onChange={(e) => setOccurence(e.target.value)}
+                            className="w-full"
+                            required
+                          />
+                        </div>
+                      )}
                     </div>
                     {error && <p className="text-red-500 mb-4">{error}</p>}
                     <Button

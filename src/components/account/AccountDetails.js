@@ -5,11 +5,8 @@ import Header from "../head_foot/Header";
 import Footer from "../head_foot/Footer";
 import ConfirmDeactivateModal from "./conFirmeDeactivateModal";
 import generatePDF from "../divers/generatePDF";
-import {
-  fetchAccountDetails,
-  fetchTransactions,
-  deactivateAccount,
-} from "../divers/accountAPI";
+import axios from "axios";
+import { fetchAccountDetails, fetchTransactions } from "../divers/accountAPI";
 import Graph from "../divers/Graph"; // Import the Graph component
 
 const AccountDetails = () => {
@@ -115,7 +112,7 @@ const AccountDetails = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <Header />
-      <main className="flex-grow flex flex-col items-center pt-2">
+      <main className="flex-grow flex flex-col items-center ">
         <div className="bg-white p-4 rounded-lg shadow-md text-center w-full max-w-4xl ">
           {account ? (
             <div className="mb-4 pb-2 rounded-lg shadow-md bg-gray-50">
