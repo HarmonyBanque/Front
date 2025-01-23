@@ -5,6 +5,8 @@ import { useState, useContext, useEffect, use } from "react";
 import { AuthContext } from "../../AuthContext";
 import { useNavigate } from "react-router-dom";
 import AddBeneficiaryModal from "./AddBeneficiaryModal";
+import toast, { Toaster } from "react-hot-toast";
+import { cancelToast } from "./cancelToast";
 import axios from "axios";
 
 const Transaction = () => {
@@ -82,26 +84,59 @@ const Transaction = () => {
     e.preventDefault();
     if (token && selectedAccount && selectedBeneficiary) {
       try {
-        await axios.post(
-          "http://127.0.0.1:8000/transactions",
-          {
-            amount: amount,
-            sender_id: selectedAccount.account_number,
-            receiver_id: selectedBeneficiary.beneficiary_account_number,
-            description: description,
-          },
+        await axios
+          .post(
+            "http://127.0.0.1:8000/transactions",
+            {
+              amount: amount,
+              sender_id: selectedAccount.account_number,
+              receiver_id: selectedBeneficiary.beneficiary_account_number,
+              description: description,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          )
+          .then((res) => {
+            navigate("/");
+            cancelToast({ transactionId: res.data.id, handleCancel });
+          });
+
+        console.log("Troased");
+      } catch (error) {
+        if (error.response) {
+          setError(error.response.data.detail);
+        }
+      }
+    }
+  };
+
+  const handleCancel = async (e, transactionId) => {
+    e.preventDefault();
+    if (token && transactionId) {
+      console.log("transaction id", transactionId);
+      try {
+        const response = await axios.post(
+          `http://127.0.0.1:8000/transactions/${transactionId}/cancel`,
+          {},
           {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }
         );
-        navigate("/");
+        console.log(response);
       } catch (error) {
         if (error.response) {
-          setError(error.response.data.detail);
+          console.log(error.response.data.detail);
+        } else {
+          console.log("An error occurred", error.message);
         }
       }
+    } else {
+      console.log("Not authenticated");
     }
   };
 
@@ -120,6 +155,7 @@ const Transaction = () => {
 
   return (
     <div>
+      <Toaster />
       <Header />
       <div className="h-fit p-10 flex items-center justify-center bg-gray-100">
         <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-4xl">
@@ -142,7 +178,7 @@ const Transaction = () => {
                 <table className="min-w-full bg-white">
                   <thead>
                     <tr>
-                      <th className="py-2 px-4 border-b">Nom du compte</th>s
+                      <th className="py-2 px-4 border-b">Nom du compte</th>
                       <th className="py-2 px-4 border-b">IBAN</th>
                       <th className="py-2 px-4 border-b">Solde</th>
                     </tr>
