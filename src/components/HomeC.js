@@ -5,6 +5,7 @@ import { AuthContext } from "../AuthContext";
 import Header from "./head_foot/Header";
 import Footer from "./head_foot/Footer";
 import AccountCard from "./account/AccountCard"; // Importer le composant AccountCard
+import { Toaster } from "react-hot-toast";
 import { Button, Spinner } from "flowbite-react";
 
 const Home = () => {
@@ -49,6 +50,7 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
+      <Toaster />
       <Header />
       <main className="flex-grow flex flex-col items-center justify-center">
         <div className="bg-white p-6 rounded-lg shadow-md text-center w-full max-w-4xl">
