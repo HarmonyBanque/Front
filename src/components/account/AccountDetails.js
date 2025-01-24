@@ -17,6 +17,8 @@ const AccountDetails = () => {
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchTermInt, setSearchTermInt] = useState("");
+  const searchTermIntAsNumber = Number(searchTermInt);
 
   useEffect(() => {
     if (token) {
@@ -83,16 +85,14 @@ const AccountDetails = () => {
         transaction.type === "received_transaction"
       );
     else if (filter === "expenses") return transaction.type === "sent_transaction";
-    else if (searchTerm ===""){
-      if (filter != "search" ){
-        setFilter("search")
-      }
-    }
     else if (filter === "search" ) {
       if (transaction.description === null){
         return null
       }
       return transaction.description.toLocaleLowerCase().includes(searchTerm.toLowerCase())
+    }
+    else if (filter === "searchInt"){
+      return transaction.amount.toString().includes(searchTermInt.toString())
     }
     return true;
     
@@ -220,7 +220,16 @@ const AccountDetails = () => {
               className="w-full"
               placeholder="Chercher une transaction"
             />
+            <input
+            id="searchInt"
+            value={searchTermInt}
+            onClick={() => setFilter("")}
+            onKeyUp={() => setFilter("searchInt")}
+            onChange={(e) => setSearchTermInt(e.target.value)}
+            type="number"
+          />
           </div>
+          
           <div className="mb-2 flex justify-center space-x-2">
             <button
               onClick={() => setFilter("all")}
