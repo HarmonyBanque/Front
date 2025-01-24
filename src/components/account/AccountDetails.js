@@ -24,6 +24,9 @@ const AccountDetails = () => {
   const [filter, setFilter] = useState("all");
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTermInt, setSearchTermInt] = useState("");
+  const searchTermIntAsNumber = Number(searchTermInt);
 
   useEffect(() => {
     if (token) {
@@ -89,13 +92,23 @@ const AccountDetails = () => {
 
   const filteredTransactions = transactions.filter((transaction) => {
     if (filter === "all") return true;
-    if (filter === "income")
+    else if (filter === "income")
       return (
         transaction.type === "deposit" ||
         transaction.type === "received_transaction"
       );
-    if (filter === "expenses") return transaction.type === "sent_transaction";
+    else if (filter === "expenses") return transaction.type === "sent_transaction";
+    else if (filter === "search" ) {
+      if (transaction.description === null){
+        return null
+      }
+      return transaction.description.toLocaleLowerCase().includes(searchTerm.toLowerCase())
+    }
+    else if (filter === "searchInt"){
+      return transaction.amount.toString().includes(searchTermInt.toString())
+    }
     return true;
+    
   });
 
   const groupedTransactions = filteredTransactions.reduce(
@@ -174,6 +187,30 @@ const AccountDetails = () => {
           ) : (
             <p>Chargement des détails du compte...</p>
           )}
+          <div className="mb-4">
+            <label htmlFor="search" className="block text-gray-700 mb-2">
+                Rechercher une transaction :
+            </label>
+            <input
+              id="search"
+              type="text"
+              value={searchTerm}
+              onClick={() => setFilter("")}
+              onKeyUp={() => setFilter("search")}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+              placeholder="Chercher une transaction"
+            />
+            <input
+            id="searchInt"
+            value={searchTermInt}
+            onClick={() => setFilter("")}
+            onKeyUp={() => setFilter("searchInt")}
+            onChange={(e) => setSearchTermInt(e.target.value)}
+            type="number"
+          />
+          </div>
+          
           <div className="mb-2 flex justify-center space-x-2">
             <button
               onClick={() => setFilter("all")}
