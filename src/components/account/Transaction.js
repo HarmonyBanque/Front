@@ -1,7 +1,7 @@
 import Header from "../head_foot/Header";
 import Footer from "../head_foot/Footer";
-import { Button, Label, TextInput } from "flowbite-react";
-import { useState, useContext, useEffect, use } from "react";
+import { Button, Label, TextInput, Checkbox } from "flowbite-react"; // Import Checkbox
+import { useState, useContext, useEffect } from "react";
 import { AuthContext } from "../../AuthContext";
 import { useNavigate } from "react-router-dom";
 import AddBeneficiaryModal from "./AddBeneficiaryModal";
@@ -24,6 +24,8 @@ const Transaction = () => {
   const [description, setDescription] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState("");
+  const [isAutomatique, setIsAutomatique] = useState(false); // State for automatic transaction
+  const [occurence, setOccurence] = useState(0); // State for occurence
 
   useEffect(() => {
     if (token) {
@@ -55,14 +57,20 @@ const Transaction = () => {
           }
         )
         .then((res) => {
-          setBeneficiaries(res.data);
-          setFilteredBeneficiary(res.data);
+          // Ajoutez vos comptes personnels à la liste des bénéficiaires
+          const personalAccounts = accounts.filter(
+            (account) =>
+              account.account_number !== selectedAccount.account_number
+          );
+          const allBeneficiaries = [...res.data, ...personalAccounts];
+          setBeneficiaries(allBeneficiaries);
+          setFilteredBeneficiary(allBeneficiaries);
         })
         .catch((error) => {
           console.error("Error fetching beneficiaries:", error);
         });
     }
-  }, [token, selectedAccount, showModal]);
+  }, [token, selectedAccount, showModal, accounts]);
 
   useEffect(() => {
     const results = accounts.filter((account) =>
@@ -84,13 +92,33 @@ const Transaction = () => {
     e.preventDefault();
     if (token && selectedAccount && selectedBeneficiary) {
       try {
-        await axios
-          .post(
-            "http://127.0.0.1:8000/transactions",
+        const transactionResponse = await axios.post(
+          "http://127.0.0.1:8000/transactions",
+          {
+            amount: amount,
+            sender_id: selectedAccount.account_number,
+            receiver_id:
+              selectedBeneficiary.account_number ||
+              selectedBeneficiary.beneficiary_account_number,
+            description: description,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (isAutomatique) {
+          await axios.post(
+            "http://127.0.0.1:8000/transactions/automatique",
             {
+              sender_account: selectedAccount.account_number,
+              receiver_account:
+                selectedBeneficiary.account_number ||
+                selectedBeneficiary.beneficiary_account_number,
               amount: amount,
-              sender_id: selectedAccount.account_number,
-              receiver_id: selectedBeneficiary.beneficiary_account_number,
+              occurence: occurence,
               description: description,
             },
             {
@@ -98,13 +126,14 @@ const Transaction = () => {
                 Authorization: `Bearer ${token}`,
               },
             }
-          )
-          .then((res) => {
-            navigate("/");
-            cancelToast({ transactionId: res.data.id, handleCancel });
-          });
+          );
+        }
 
-        console.log("Troased");
+        navigate("/");
+        cancelToast({
+          transactionId: transactionResponse.data.id,
+          handleCancel,
+        });
       } catch (error) {
         if (error.response) {
           setError(error.response.data.detail);
@@ -142,6 +171,9 @@ const Transaction = () => {
 
   const handleAccountClick = (account) => {
     setSelectedAccount(account);
+    setFilteredBeneficiary(
+      accounts.filter((acc) => acc.account_number !== account.account_number)
+    );
   };
 
   const handleBeneficiaryClick = (beneficiary) => {
@@ -159,57 +191,55 @@ const Transaction = () => {
       <Header />
       <div className="h-fit p-10 flex items-center justify-center bg-gray-100">
         <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-4xl">
-          <div>
-            <h2 className="text-2xl font-bold mb-6 text-center">
-              Depuis quel compte ?
-            </h2>
-            <div className="mb-4">
-              <TextInput
-                id="search"
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
-                placeholder="Chercher un compte"
-              />
-            </div>
-            <div className="mb-4 overflow-x-auto">
-              {filteredAccounts.length > 0 ? (
-                <table className="min-w-full bg-white">
-                  <thead>
-                    <tr>
-                      <th className="py-2 px-4 border-b">Nom du compte</th>
-                      <th className="py-2 px-4 border-b">IBAN</th>
-                      <th className="py-2 px-4 border-b">Solde</th>
+          <h2 className="text-2xl font-bold mb-6 text-center">
+            Depuis quel compte ?
+          </h2>
+          <div className="mb-4">
+            <TextInput
+              id="search"
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+              placeholder="Chercher un compte"
+            />
+          </div>
+          <div className="mb-4 overflow-y-auto max-h-40">
+            {filteredAccounts.length > 0 ? (
+              <table className="min-w-full bg-white">
+                <thead>
+                  <tr>
+                    <th className="py-2 px-4 border-b">Nom du compte</th>
+                    <th className="py-2 px-4 border-b">IBAN</th>
+                    <th className="py-2 px-4 border-b">Solde</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAccounts.map((account) => (
+                    <tr
+                      key={account.id}
+                      className={`cursor-pointer ${
+                        selectedAccount && selectedAccount.id === account.id
+                          ? "bg-blue-100"
+                          : ""
+                      }`}
+                      onClick={() => handleAccountClick(account)}
+                    >
+                      <td className="py-2 px-4 border-b">{account.name}</td>
+                      <td className="py-2 px-4 border-b">
+                        {account.account_number}
+                      </td>
+                      <td className="py-2 px-4 border-b">
+                        {account.balance} €
+                      </td>
+                      <td className="py-2 px-4 border-b text-center"></td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredAccounts.map((account) => (
-                      <tr
-                        key={account.id}
-                        className={`cursor-pointer ${
-                          selectedAccount && selectedAccount.id === account.id
-                            ? "bg-blue-100"
-                            : ""
-                        }`}
-                        onClick={() => handleAccountClick(account)}
-                      >
-                        <td className="py-2 px-4 border-b">{account.name}</td>
-                        <td className="py-2 px-4 border-b">
-                          {account.account_number}
-                        </td>
-                        <td className="py-2 px-4 border-b">
-                          {account.balance} €
-                        </td>
-                        <td className="py-2 px-4 border-b text-center"></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p>Aucun compte trouvé</p>
-              )}
-            </div>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p>Aucun compte trouvé</p>
+            )}
           </div>
           {selectedAccount && (
             <div className="mt-12">
@@ -240,7 +270,7 @@ const Transaction = () => {
                     />
                   </div>
                 </div>
-                <div className="mb-4 overflow-x-auto">
+                <div className="mb-4 overflow-y-auto max-h-40">
                   {filteredBeneficiary.length > 0 ? (
                     <table className="min-w-full bg-white">
                       <thead>
@@ -265,7 +295,8 @@ const Transaction = () => {
                               {beneficiary.name ? beneficiary.name : "Inconnu"}
                             </td>
                             <td className="py-2 px-4 border-b">
-                              {beneficiary.beneficiary_account_number}
+                              {beneficiary.account_number ||
+                                beneficiary.beneficiary_account_number}
                             </td>
                             <td className="py-2 px-4 border-b text-center"></td>
                           </tr>
@@ -299,7 +330,7 @@ const Transaction = () => {
                         required
                       />
                       <Label
-                        htmlFor="amount"
+                        htmlFor="description"
                         className="block text-gray-700 mb-2"
                       >
                         Description :
@@ -312,6 +343,34 @@ const Transaction = () => {
                         className="w-full"
                         required
                       />
+                      <div className="flex items-center mt-4">
+                        <Checkbox
+                          id="isAutomatique"
+                          checked={isAutomatique}
+                          onChange={(e) => setIsAutomatique(e.target.checked)}
+                        />
+                        <Label htmlFor="isAutomatique" className="ml-2">
+                          Prélèvement automatique
+                        </Label>
+                      </div>
+                      {isAutomatique && (
+                        <div className="mt-4">
+                          <Label
+                            htmlFor="occurence"
+                            className="block text-gray-700 mb-2"
+                          >
+                            Occurence (en secondes) :
+                          </Label>
+                          <TextInput
+                            id="occurence"
+                            type="number"
+                            value={occurence}
+                            onChange={(e) => setOccurence(e.target.value)}
+                            className="w-full"
+                            required
+                          />
+                        </div>
+                      )}
                     </div>
                     {error && <p className="text-red-500 mb-4">{error}</p>}
                     <Button

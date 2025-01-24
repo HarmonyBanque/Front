@@ -10,7 +10,6 @@ const generatePDF = (
   const doc = new jsPDF();
   doc.text("Relevé de compte", 14, 16);
 
-  // Utilisation de splitTextToSize pour gérer les retours à la ligne
   const accountNameText = doc.splitTextToSize(
     `Nom du compte : ${account.name}`,
     180

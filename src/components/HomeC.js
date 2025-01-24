@@ -49,17 +49,17 @@ const Home = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen bg-gray-100 flex flex-col ">
       <Toaster />
       <Header />
-      <main className="flex-grow flex flex-col items-center justify-center">
+      <main className="flex-grow flex flex-col items-center justify-center pt-4">
         <div className="bg-white p-6 rounded-lg shadow-md text-center w-full max-w-4xl">
           {user ? (
             <div>
               <h1 className="text-2xl font-bold mb-4">
                 Bonjour {user.username}
               </h1>
-              <div className="mt-4 flex items-center justify-between w-full justify-center">
+              <div className="mt-4 flex items-center justify-between w-full ">
                 <h2 className="text-xl font-bold mb-4">Vos Comptes</h2>
                 <Button
                   outline
@@ -75,7 +75,7 @@ const Home = () => {
                   Solde total : {totalBalance} €
                 </h3>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6 h-[50vh] overflow-auto">
                 {accounts.map((account) => (
                   <button
                     key={account.id}

@@ -2,21 +2,25 @@ import React, { useState, useEffect, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../AuthContext";
 import Header from "../head_foot/Header";
+import { Button } from "flowbite-react";
 import Footer from "../head_foot/Footer";
 import ConfirmDeactivateModal from "./conFirmeDeactivateModal";
 import generatePDF from "../divers/generatePDF";
 import {
   fetchAccountDetails,
   fetchTransactions,
+  fetchAutomatiqueTransactions,
+  cancelAutomatiqueTransaction,
   deactivateAccount,
 } from "../divers/accountAPI";
-import Graph from "../divers/Graph"; // Import the Graph component
+import Graph from "../divers/Graph";
 
 const AccountDetails = () => {
   const { token } = useContext(AuthContext);
   const { accountNumber } = useParams();
   const [account, setAccount] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [automatiqueTransactions, setAutomatiqueTransactions] = useState([]);
   const [filter, setFilter] = useState("all");
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const navigate = useNavigate();
@@ -30,19 +34,16 @@ const AccountDetails = () => {
       fetchTransactions(accountNumber, token)
         .then((data) => setTransactions(data))
         .catch((error) => console.error(error));
+
+      fetchAutomatiqueTransactions(accountNumber, token)
+        .then((data) => setAutomatiqueTransactions(data))
+        .catch((error) => console.error(error));
     }
   }, [token, accountNumber]);
 
   const handleDeactivateAccount = async (password) => {
     return new Promise((resolve, reject) => {
-      axios
-        .post(
-          `http://127.0.0.1:8000/accounts/${accountNumber}/deactivate`,
-          { password: password },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        )
+      deactivateAccount(accountNumber, token)
         .then(() => {
           console.log("Compte désactivé avec succès");
           navigate("/");
@@ -53,6 +54,29 @@ const AccountDetails = () => {
           reject(new Error("Mot de passe incorrect"));
         });
     });
+  };
+
+  const handleCancelAutomatique = async (transactionId) => {
+    if (token && transactionId) {
+      try {
+        const response = await cancelAutomatiqueTransaction(
+          transactionId,
+          token
+        );
+        setAutomatiqueTransactions(
+          automatiqueTransactions.map((trans) =>
+            trans.id === transactionId ? { ...trans, status: 0 } : trans
+          )
+        );
+        console.log(response);
+      } catch (error) {
+        if (error.response) {
+          console.log(error.response.data.detail);
+        } else {
+          console.log("An error occurred", error.message);
+        }
+      }
+    }
   };
 
   const openModal = () => {
@@ -110,12 +134,23 @@ const AccountDetails = () => {
     }
   };
 
+  const translateStatus = (status) => {
+    switch (status) {
+      case 0:
+        return "Annulé";
+      case 1:
+        return "En cours";
+      default:
+        return "Inconnu";
+    }
+  };
+
   if (!token) return <p>Vous devez être connecté pour voir cette page</p>;
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <Header />
-      <main className="flex-grow flex flex-col items-center pt-2">
+      <main className="flex-grow flex flex-col items-center pt-4">
         <div className="bg-white p-4 rounded-lg shadow-md text-center w-full max-w-4xl ">
           {account ? (
             <div className="mb-4 pb-2 rounded-lg shadow-md bg-gray-50">
@@ -164,48 +199,120 @@ const AccountDetails = () => {
             >
               Dépenses
             </button>
+            <button
+              onClick={() => setFilter("automatique")}
+              className={`px-2 py-1 rounded-lg transition-colors duration-300 text-sm ${
+                filter === "automatique"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200"
+              }`}
+            >
+              Prélèvements
+            </button>
           </div>
           <div className="mb-4 overflow-x-auto max-h-[40vh] overflow-auto">
-            {Object.keys(groupedTransactions).length > 0 ? (
-              <table className="min-w-full bg-white">
-                <thead>
-                  <tr>
-                    <th className="py-2 px-4 border-b">Date</th>
-                    <th className="py-2 px-4 border-b">Type</th>
-                    <th className="py-2 px-4 border-b">Montant</th>
-                    <th className="py-2 px-4 border-b">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.keys(groupedTransactions).map((date) =>
-                    groupedTransactions[date].map((transaction) => (
-                      <tr key={transaction.date} className="bg-white">
-                        <td className="py-2 px-4 border-b">
-                          {formatDate(transaction.date)}
-                        </td>
-                        <td className="py-2 px-4 border-b">
-                          {translateType(transaction.type)}
-                        </td>
-                        <td className="py-2 px-4 border-b">
-                          {transaction.amount} €
-                        </td>
-                        <td className="py-2 px-4 border-b">
-                          {transaction.description}
-                        </td>
+            {filter === "automatique" ? (
+              <div className="overflow-x-auto max-h-[40vh] overflow-auto">
+                {automatiqueTransactions.length > 0 ? (
+                  <table className="min-w-full bg-white">
+                    <thead>
+                      <tr>
+                        <th className="py-2 px-4 border-b">ID</th>
+                        <th className="py-2 px-4 border-b">Montant</th>
+                        <th className="py-2 px-4 border-b">Description</th>
+                        <th className="py-2 px-4 border-b">Occurence</th>
+                        <th className="py-2 px-4 border-b">Statut</th>
+                        <th className="py-2 px-4 border-b">Actions</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody>
+                      {automatiqueTransactions.map((transaction) => (
+                        <tr key={transaction.id}>
+                          <td className="py-2 px-4 border-b">
+                            {transaction.id}
+                          </td>
+                          <td className="py-2 px-4 border-b">
+                            {transaction.amount} €
+                          </td>
+                          <td className="py-2 px-4 border-b">
+                            {transaction.description}
+                          </td>
+                          <td className="py-2 px-4 border-b">
+                            {transaction.occurence} s
+                          </td>
+                          <td className="py-2 px-4 border-b">
+                            {transaction.status === 2
+                              ? "En cours"
+                              : transaction.reason}
+                          </td>
+                          <td className="py-2 px-4 border-b">
+                            {transaction.status === 1 && (
+                              <Button
+                                color="red"
+                                onClick={() =>
+                                  handleCancelAutomatique(transaction.id)
+                                }
+                              >
+                                Annuler
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-gray-700">
+                    Aucun prélèvement automatique trouvé
+                  </p>
+                )}
+              </div>
             ) : (
-              <p className="text-gray-700">Aucune transaction trouvée</p>
+              <div>
+                {Object.keys(groupedTransactions).length > 0 ? (
+                  <table className="min-w-full bg-white">
+                    <thead>
+                      <tr>
+                        <th className="py-2 px-4 border-b">Date</th>
+                        <th className="py-2 px-4 border-b">Type</th>
+                        <th className="py-2 px-4 border-b">Montant</th>
+                        <th className="py-2 px-4 border-b">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.keys(groupedTransactions).map((date) =>
+                        groupedTransactions[date].map((transaction) => (
+                          <tr key={transaction.date} className="bg-white">
+                            <td className="py-2 px-4 border-b">
+                              {formatDate(transaction.date)}
+                            </td>
+                            <td className="py-2 px-4 border-b">
+                              {translateType(transaction.type)}
+                            </td>
+                            <td className="py-2 px-4 border-b">
+                              {transaction.amount} €
+                            </td>
+                            <td className="py-2 px-4 border-b">
+                              {transaction.description}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-gray-700">Aucune transaction trouvée</p>
+                )}
+              </div>
             )}
           </div>
           <button
             onClick={() =>
               generatePDF(
                 account,
-                filteredTransactions,
+                filter === "automatique"
+                  ? automatiqueTransactions
+                  : filteredTransactions,
                 formatDate,
                 translateType
               )
