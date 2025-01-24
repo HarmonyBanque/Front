@@ -34,6 +34,41 @@ export const fetchTransactions = async (accountNumber, token) => {
   }
 };
 
+export const fetchAutomatiqueTransactions = async (accountNumber, token) => {
+  try {
+    const response = await axios.get(
+      `http://127.0.0.1:8000/transactions/accounts/${accountNumber}/automatique`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching automatique transactions:", error);
+    throw error;
+  }
+};
+
+export const cancelAutomatiqueTransaction = async (transactionId, token) => {
+  try {
+    const response = await axios.post(
+      `http://127.0.0.1:8000/transactions/automatique/${transactionId}/cancel`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error cancelling automatique transaction:", error);
+    throw error;
+  }
+};
+
 export const deactivateAccount = async (accountNumber, token) => {
   try {
     await axios.post(

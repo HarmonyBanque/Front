@@ -57,20 +57,20 @@ const Transaction = () => {
           }
         )
         .then((res) => {
-          setBeneficiaries(res.data);
-          setFilteredBeneficiary(
-            res.data.filter(
-              (beneficiary) =>
-                beneficiary.beneficiary_account_number !==
-                selectedAccount.account_number
-            )
+          // Ajoutez vos comptes personnels à la liste des bénéficiaires
+          const personalAccounts = accounts.filter(
+            (account) =>
+              account.account_number !== selectedAccount.account_number
           );
+          const allBeneficiaries = [...res.data, ...personalAccounts];
+          setBeneficiaries(allBeneficiaries);
+          setFilteredBeneficiary(allBeneficiaries);
         })
         .catch((error) => {
           console.error("Error fetching beneficiaries:", error);
         });
     }
-  }, [token, selectedAccount, showModal]);
+  }, [token, selectedAccount, showModal, accounts]);
 
   useEffect(() => {
     const results = accounts.filter((account) =>
@@ -97,7 +97,9 @@ const Transaction = () => {
           {
             amount: amount,
             sender_id: selectedAccount.account_number,
-            receiver_id: selectedBeneficiary.beneficiary_account_number,
+            receiver_id:
+              selectedBeneficiary.account_number ||
+              selectedBeneficiary.beneficiary_account_number,
             description: description,
           },
           {
@@ -112,7 +114,9 @@ const Transaction = () => {
             "http://127.0.0.1:8000/transactions/automatique",
             {
               sender_account: selectedAccount.account_number,
-              receiver_account: selectedBeneficiary.beneficiary_account_number,
+              receiver_account:
+                selectedBeneficiary.account_number ||
+                selectedBeneficiary.beneficiary_account_number,
               amount: amount,
               occurence: occurence,
               description: description,
@@ -187,57 +191,55 @@ const Transaction = () => {
       <Header />
       <div className="h-fit p-10 flex items-center justify-center bg-gray-100">
         <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-4xl">
-          <div>
-            <h2 className="text-2xl font-bold mb-6 text-center">
-              Depuis quel compte ?
-            </h2>
-            <div className="mb-4">
-              <TextInput
-                id="search"
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
-                placeholder="Chercher un compte"
-              />
-            </div>
-            <div className="mb-4 overflow-y-auto max-h-40">
-              {filteredAccounts.length > 0 ? (
-                <table className="min-w-full bg-white">
-                  <thead>
-                    <tr>
-                      <th className="py-2 px-4 border-b">Nom du compte</th>
-                      <th className="py-2 px-4 border-b">IBAN</th>
-                      <th className="py-2 px-4 border-b">Solde</th>
+          <h2 className="text-2xl font-bold mb-6 text-center">
+            Depuis quel compte ?
+          </h2>
+          <div className="mb-4">
+            <TextInput
+              id="search"
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+              placeholder="Chercher un compte"
+            />
+          </div>
+          <div className="mb-4 overflow-y-auto max-h-40">
+            {filteredAccounts.length > 0 ? (
+              <table className="min-w-full bg-white">
+                <thead>
+                  <tr>
+                    <th className="py-2 px-4 border-b">Nom du compte</th>
+                    <th className="py-2 px-4 border-b">IBAN</th>
+                    <th className="py-2 px-4 border-b">Solde</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAccounts.map((account) => (
+                    <tr
+                      key={account.id}
+                      className={`cursor-pointer ${
+                        selectedAccount && selectedAccount.id === account.id
+                          ? "bg-blue-100"
+                          : ""
+                      }`}
+                      onClick={() => handleAccountClick(account)}
+                    >
+                      <td className="py-2 px-4 border-b">{account.name}</td>
+                      <td className="py-2 px-4 border-b">
+                        {account.account_number}
+                      </td>
+                      <td className="py-2 px-4 border-b">
+                        {account.balance} €
+                      </td>
+                      <td className="py-2 px-4 border-b text-center"></td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredAccounts.map((account) => (
-                      <tr
-                        key={account.id}
-                        className={`cursor-pointer ${
-                          selectedAccount && selectedAccount.id === account.id
-                            ? "bg-blue-100"
-                            : ""
-                        }`}
-                        onClick={() => handleAccountClick(account)}
-                      >
-                        <td className="py-2 px-4 border-b">{account.name}</td>
-                        <td className="py-2 px-4 border-b">
-                          {account.account_number}
-                        </td>
-                        <td className="py-2 px-4 border-b">
-                          {account.balance} €
-                        </td>
-                        <td className="py-2 px-4 border-b text-center"></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p>Aucun compte trouvé</p>
-              )}
-            </div>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p>Aucun compte trouvé</p>
+            )}
           </div>
           {selectedAccount && (
             <div className="mt-12">
@@ -293,7 +295,8 @@ const Transaction = () => {
                               {beneficiary.name ? beneficiary.name : "Inconnu"}
                             </td>
                             <td className="py-2 px-4 border-b">
-                              {beneficiary.beneficiary_account_number}
+                              {beneficiary.account_number ||
+                                beneficiary.beneficiary_account_number}
                             </td>
                             <td className="py-2 px-4 border-b text-center"></td>
                           </tr>
